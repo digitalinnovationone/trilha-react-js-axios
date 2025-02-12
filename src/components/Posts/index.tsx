@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import Post from "./Post";
 import axios from "axios";
+import {
+  getPosts,
+  createPost,
+  updatePost,
+  deletePost as deletePostFromApi,
+} from "../../services/posts";
 
 interface Post {
   id: number;
@@ -19,8 +25,8 @@ const Posts: React.FC = () => {
   useEffect(() => {
     const fetchAllPosts = async () => {
       try {
-        const res = await axios.get(`${API_URL}/posts`);
-        setPosts(res.data.posts);
+        const posts = await getPosts();
+        setPosts(posts);
       } catch (error) {
         alert("Error fetching list of posts");
         console.error(error);
@@ -59,13 +65,8 @@ const Posts: React.FC = () => {
   const addPost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_URL}/posts/add`, {
-        title,
-        body,
-        userId: 5,
-      });
-
-      setPosts([res.data, ...posts]);
+      const newPost = await createPost(title, body, 5);
+      setPosts([newPost, ...posts]);
       setTitle("");
       setBody("");
     } catch (error) {
@@ -81,8 +82,8 @@ const Posts: React.FC = () => {
     }
 
     try {
-      const res = await axios.delete(`${API_URL}/posts/${id}`);
-      setPosts(posts.filter((post) => post.id !== res.data.id));
+      const deletedPost = await deletePostFromApi(id);
+      setPosts(posts.filter((post) => post.id !== deletedPost.id));
     } catch (error) {
       alert(`Error removing the post id ${id}`);
       console.error(error);
@@ -96,14 +97,10 @@ const Posts: React.FC = () => {
     }
 
     try {
-      const res = await axios.put(`${API_URL}/posts/${id}`, {
-        id,
-        title,
-        body,
-      });
+      const editedPost = await updatePost(id, title, body);
 
       setPosts(
-        posts.map((post) => (post.id === res.data.id ? res.data : post))
+        posts.map((post) => (post.id === editedPost.id ? editedPost : post))
       );
     } catch (error) {
       alert(`Error editing the post id ${id}`);
