@@ -1,117 +1,45 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Post from "./Post";
 import axios from "axios";
-import {
-  getPosts,
-  createPost,
-  updatePost,
-  deletePost as deletePostFromApi,
-} from "../../services/posts";
-
-interface Post {
-  id: number;
-  title: string;
-  body: string;
-}
+import { usePosts } from "../../hooks/usePosts";
 
 const Posts: React.FC = () => {
-  const API_URL = import.meta.env.VITE_API_URL;
-  const [posts, setPosts] = useState<Post[]>([]);
+  const { posts, loading, addPost, deletePost, editPost } = usePosts();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [userFullName, setUserFullName] = useState("Anonymous");
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  // TODO 1: GET method
-  useEffect(() => {
-    const fetchAllPosts = async () => {
-      try {
-        const posts = await getPosts();
-        setPosts(posts);
-      } catch (error) {
-        alert("Error fetching list of posts");
-        console.error(error);
-      }
-    };
-
-    fetchAllPosts();
-  }, [API_URL]);
-
-  // TODO: Get user fullname
   useEffect(() => {
     const getAuthenticatedUserName = async () => {
       try {
         const token = localStorage.getItem("auth-token");
-
-        if (!token) {
-          throw new Error("User token not found");
-        }
+        if (!token) throw new Error("User token not found");
 
         const res = await axios.get(`${API_URL}/user/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         setUserFullName(`${res.data.firstName} ${res.data.lastName}`);
       } catch {
-        alert("Error to fetch user data");
+        alert("Error fetching user data");
       }
     };
 
     getAuthenticatedUserName();
   }, [API_URL]);
 
-  // TODO 2: POST method
-  const addPost = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddPost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    try {
-      const newPost = await createPost(title, body, 5);
-      setPosts([newPost, ...posts]);
-      setTitle("");
-      setBody("");
-    } catch (error) {
-      alert("Error adding a new post");
-      console.error(error);
-    }
-  };
-
-  // TODO 3: DELETE method
-  const deletePost = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this post?")) {
-      return;
-    }
-
-    try {
-      const deletedPost = await deletePostFromApi(id);
-      setPosts(posts.filter((post) => post.id !== deletedPost.id));
-    } catch (error) {
-      alert(`Error removing the post id ${id}`);
-      console.error(error);
-    }
-  };
-
-  // TODO 4: PUT method
-  const editPost = async (id: number, title: string, body: string) => {
-    if (!confirm("Are you sure you want to edit this post?")) {
-      return;
-    }
-
-    try {
-      const editedPost = await updatePost(id, title, body);
-
-      setPosts(
-        posts.map((post) => (post.id === editedPost.id ? editedPost : post))
-      );
-    } catch (error) {
-      alert(`Error editing the post id ${id}`);
-      console.error(error);
-    }
+    await addPost(title, body, 5);
+    setTitle("");
+    setBody("");
   };
 
   return (
     <div>
       <h1 className="text-2xl mb-5">Hello, {userFullName}</h1>
-      <form className="mb-10" onSubmit={addPost}>
+      <form className="mb-10" onSubmit={handleAddPost}>
         <input
           className="w-full mb-2 p-2 border rounded border-gray-200"
           value={title}
@@ -127,10 +55,12 @@ const Posts: React.FC = () => {
         <button
           type="submit"
           className="bg-indigo-500 text-white p-2 rounded pl-5 pr-5 w-full cursor-pointer"
+          disabled={loading}
         >
-          Add Post
+          {loading ? "Adding..." : "Add Post"}
         </button>
       </form>
+      {loading && <p>Loading posts...</p>}
       {posts.map((post) => (
         <Post
           key={post.id}
